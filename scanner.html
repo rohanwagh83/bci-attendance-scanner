@@ -7,35 +7,14 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f172a;
-      color: #f1f5f9;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f1f5f9; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
     h1 { font-size: 1.3rem; margin: 0 0 16px 0; text-align: center; }
     #reader { width: 100%; max-width: 380px; border-radius: 16px; overflow: hidden; border: 2px solid #334155; }
-    #result {
-      margin-top: 20px; width: 100%; max-width: 380px; min-height: 70px;
-      border-radius: 12px; padding: 16px; text-align: center; font-size: 1.05rem;
-      font-weight: 600; display: flex; align-items: center; justify-content: center;
-      transition: background 0.2s; background: #1e293b; color: #94a3b8;
-    }
+    #result { margin-top: 20px; width: 100%; max-width: 380px; min-height: 70px; border-radius: 12px; padding: 16px; text-align: center; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; justify-content: center; background: #1e293b; color: #94a3b8; }
     #result.in { background: #14532d; color: #bbf7d0; }
     #result.out { background: #1e3a8a; color: #bfdbfe; }
     #result.error { background: #7f1d1d; color: #fecaca; }
     #status { margin-top: 10px; font-size: 0.8rem; color: #64748b; text-align: center; }
-    .spinner {
-      border: 3px solid #334155; border-top: 3px solid #38bdf8; border-radius: 50%;
-      width: 18px; height: 18px; animation: spin 0.8s linear infinite;
-      display: inline-block; margin-right: 8px; vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -43,59 +22,41 @@
   <div id="reader"></div>
   <div id="result">Point your camera at a QR code</div>
   <div id="status"></div>
-
   <script>
-    // ============================================================
-    // PASTE YOUR APPS SCRIPT WEB APP URL BELOW (ends in /exec)
-    // ============================================================
-    const WEB_APP_URL = "https://script.google.com/macros/library/d/1z_fF_1KjO6MhZ6Am80patTIMKZsbOtm8eBX9tSHYCw4_GMBen0LWpuu0/2/exec";
-
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz-OHbPIFedRQRVt31x7lypMJYyUngebQ4mvph7KhViBvt5EjnldVnxOTd_a27MX3Id/exec";
     let isProcessing = false;
-
+    function jsonpRequest(id, onSuccess, onError) {
+      const callbackName = "jsonpCallback_" + Date.now();
+      const script = document.createElement("script");
+      const cleanup = function () { delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); };
+      window[callbackName] = function (data) { cleanup(); onSuccess(data); };
+      script.onerror = function () { cleanup(); onError(new Error("Could not reach the server.")); };
+      script.src = WEB_APP_URL + "?id=" + encodeURIComponent(id) + "&callback=" + callbackName;
+      document.body.appendChild(script);
+    }
     function onScanSuccess(decodedText) {
       if (isProcessing) return;
       isProcessing = true;
-
-      const resultDiv = document.getElementById('result');
-      resultDiv.className = '';
-      resultDiv.innerHTML = '<span class="spinner"></span> Recording scan for "' + decodedText + '"...';
-
-      fetch(WEB_APP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
-        body: JSON.stringify({ id: decodedText })
-      })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          resultDiv.className = data.status === 'in' ? 'in' : (data.status === 'out' ? 'out' : 'error');
+      const resultDiv = document.getElementById("result");
+      resultDiv.className = "";
+      resultDiv.textContent = "Recording scan...";
+      jsonpRequest(decodedText,
+        function (data) {
+          resultDiv.className = data.status === "in" ? "in" : (data.status === "out" ? "out" : "error");
           resultDiv.textContent = data.message;
-        })
-        .catch(function (err) {
-          resultDiv.className = 'error';
-          resultDiv.textContent = 'Network error: ' + err.message;
-        })
-        .finally(function () {
           setTimeout(function () { isProcessing = false; }, 3000);
-        });
+        },
+        function (err) {
+          resultDiv.className = "error";
+          resultDiv.textContent = "Error: " + err.message;
+          setTimeout(function () { isProcessing = false; }, 3000);
+        }
+      );
     }
-
-    function onScanFailure() {
-      // fires continuously while no QR is in view — ignore
-    }
-
-    if (WEB_APP_URL.indexOf('PASTE_YOUR') === 0) {
-      document.getElementById('status').textContent = '⚠️ Set WEB_APP_URL in the code before using this page.';
-    } else {
-      const html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 240, height: 240 } },
-        onScanSuccess,
-        onScanFailure
-      ).catch(function (err) {
-        document.getElementById('status').textContent = 'Camera error: ' + err;
-      });
-    }
+    function onScanFailure() {}
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 240, height: 240 } }, onScanSuccess, onScanFailure)
+      .catch(function (err) { document.getElementById("status").textContent = "Camera error: " + err; });
   </script>
 </body>
 </html>
