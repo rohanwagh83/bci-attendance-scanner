@@ -150,9 +150,12 @@
               document.getElementById("selfiePreview").src = dataUrl;
               document.getElementById("selfiePreview").style.display = "block";
               resolve(dataUrl);
-            }, 700);
+            }, 1200);
           })
-          .catch(function () { resolve(null); });
+          .catch(function (err) {
+            document.getElementById("modalNote").textContent = "Selfie unavailable (" + err.name + ") — continuing without it.";
+            resolve(null);
+          });
       });
     }
 
@@ -173,13 +176,14 @@
       const person = selectedPerson;
 
       document.getElementById("pinConfirm").disabled = true;
-      document.getElementById("modalNote").textContent = "Getting location & camera...";
+      document.getElementById("modalNote").textContent = "Requesting camera access...";
 
-      Promise.all([captureSelfie(), getLocation()]).then(function (results) {
-        const photoDataUrl = results[0];
-        const loc = results[1];
-        closePinModal();
-        submitScan(person, pin, loc, photoDataUrl);
+      captureSelfie().then(function (photoDataUrl) {
+        document.getElementById("modalNote").textContent = "Requesting location access...";
+        return getLocation().then(function (loc) {
+          closePinModal();
+          submitScan(person, pin, loc, photoDataUrl);
+        });
       });
     };
 
