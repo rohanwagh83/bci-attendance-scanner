@@ -34,7 +34,6 @@
     #pinConfirm:disabled { background: #334155; color: #64748b; }
     .modal-note { font-size: 0.75rem; color: #64748b; margin-top: 10px; }
     video#selfieVideo, canvas#selfieCanvas { display: none; }
-    iframe#uploadFrame { display: none; }
   </style>
 </head>
 <body>
@@ -60,14 +59,6 @@
 
   <video id="selfieVideo" autoplay playsinline></video>
   <canvas id="selfieCanvas"></canvas>
-  <iframe name="uploadFrame" id="uploadFrame"></iframe>
-  <form id="uploadForm" method="POST" target="uploadFrame" style="display:none;">
-    <input type="hidden" name="id" id="formId">
-    <input type="hidden" name="pin" id="formPin">
-    <input type="hidden" name="lat" id="formLat">
-    <input type="hidden" name="lng" id="formLng">
-    <input type="hidden" name="photoData" id="formPhoto">
-  </form>
 
   <script>
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxPjw95HouwwcwBeJc4J_ZZA0Pqcm9DqcYasKwIbvP2TNS7n-t4dDZQHze-st_Z5nUl/exec";
@@ -187,43 +178,35 @@
       });
     };
 
-    let messageHandlerActive = false;
-
     function submitScan(person, pin, loc, photoDataUrl) {
       isProcessing = true;
       const resultDiv = document.getElementById("result");
       resultDiv.className = "show";
       resultDiv.textContent = "Recording for " + person.name + "...";
 
-      document.getElementById("formId").value = person.id;
-      document.getElementById("formPin").value = pin;
-      document.getElementById("formLat").value = loc ? loc.lat : "";
-      document.getElementById("formLng").value = loc ? loc.lng : "";
-      document.getElementById("formPhoto").value = photoDataUrl || "";
-      document.getElementById("uploadForm").action = WEB_APP_URL;
-
-      if (!messageHandlerActive) {
-        messageHandlerActive = true;
-        window.addEventListener("message", function (event) {
-          let data;
-          try { data = JSON.parse(event.data); } catch (e) { return; }
-          if (!data || !data.status) return;
-          const rd = document.getElementById("result");
-          rd.className = "show " + (data.status === "in" ? "in" : (data.status === "out" ? "out" : "error"));
-          rd.textContent = data.message;
-          setTimeout(function () { rd.className = ""; isProcessing = false; }, 4000);
-        });
-      }
-
-      document.getElementById("uploadForm").submit();
-
-      setTimeout(function () {
-        if (isProcessing) {
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          id: person.id,
+          pin: pin,
+          lat: loc ? loc.lat : "",
+          lng: loc ? loc.lng : "",
+          photoData: photoDataUrl || ""
+        })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          resultDiv.className = "show " + (data.status === "in" ? "in" : (data.status === "out" ? "out" : "error"));
+          resultDiv.textContent = data.message;
+        })
+        .catch(function (err) {
           resultDiv.className = "show error";
-          resultDiv.textContent = "No response from server — check your connection and try again.";
+          resultDiv.textContent = "Network error: " + err.message;
+        })
+        .finally(function () {
           setTimeout(function () { resultDiv.className = ""; isProcessing = false; }, 4000);
-        }
-      }, 15000);
+        });
     }
 
     if (WEB_APP_URL.indexOf("PASTE_YOUR") === 0) {
