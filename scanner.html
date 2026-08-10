@@ -6,72 +6,35 @@
   <title>BCI Attendance</title>
   <style>
     * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f172a;
-      color: #f1f5f9;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f1f5f9; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
     h1 { font-size: 1.3rem; margin: 0 0 16px 0; text-align: center; }
-    #search {
-      width: 100%;
-      max-width: 420px;
-      padding: 14px 16px;
-      border-radius: 12px;
-      border: 2px solid #334155;
-      background: #1e293b;
-      color: #f1f5f9;
-      font-size: 1rem;
-      margin-bottom: 14px;
-    }
+    #search { width: 100%; max-width: 420px; padding: 14px 16px; border-radius: 12px; border: 2px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 1rem; margin-bottom: 14px; }
     #search:focus { outline: none; border-color: #38bdf8; }
-    #list {
-      width: 100%;
-      max-width: 420px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 55vh;
-      overflow-y: auto;
-    }
-    .person-btn {
-      width: 100%;
-      text-align: left;
-      padding: 14px 16px;
-      border-radius: 12px;
-      border: 2px solid #334155;
-      background: #1e293b;
-      color: #f1f5f9;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
+    #list { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+    .person-btn { width: 100%; text-align: left; padding: 14px 16px; border-radius: 12px; border: 2px solid #334155; background: #1e293b; color: #f1f5f9; font-size: 1rem; font-weight: 600; cursor: pointer; }
     .person-btn:active { background: #334155; }
-    .person-btn .purpose { display: block; font-size: 0.8rem; font-weight: 400; color: #94a3b8; margin-top: 2px; }
-    #result {
-      margin-top: 16px;
-      width: 100%;
-      max-width: 420px;
-      min-height: 60px;
-      border-radius: 12px;
-      padding: 16px;
-      text-align: center;
-      font-size: 1.05rem;
-      font-weight: 600;
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
+    #result { margin-top: 16px; width: 100%; max-width: 420px; min-height: 60px; border-radius: 12px; padding: 16px; text-align: center; font-size: 1.05rem; font-weight: 600; display: none; align-items: center; justify-content: center; }
     #result.show { display: flex; }
     #result.in { background: #14532d; color: #bbf7d0; }
     #result.out { background: #1e3a8a; color: #bfdbfe; }
     #result.error { background: #7f1d1d; color: #fecaca; }
     #status { margin-top: 10px; font-size: 0.85rem; color: #64748b; text-align: center; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; z-index: 10; padding: 20px; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: #1e293b; border-radius: 16px; padding: 24px; width: 100%; max-width: 340px; text-align: center; }
+    .modal-box h2 { font-size: 1.1rem; margin: 0 0 6px 0; }
+    .modal-box p { font-size: 0.85rem; color: #94a3b8; margin: 0 0 16px 0; }
+    #pinInput { width: 100%; padding: 14px; border-radius: 10px; border: 2px solid #334155; background: #0f172a; color: #f1f5f9; font-size: 1.4rem; text-align: center; letter-spacing: 6px; margin-bottom: 14px; }
+    #pinInput:focus { outline: none; border-color: #38bdf8; }
+    #selfiePreview { width: 100%; max-width: 200px; border-radius: 10px; margin: 0 auto 14px auto; display: none; }
+    .modal-buttons { display: flex; gap: 10px; }
+    .modal-buttons button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    #pinCancel { background: #334155; color: #f1f5f9; }
+    #pinConfirm { background: #38bdf8; color: #0f172a; }
+    #pinConfirm:disabled { background: #334155; color: #64748b; }
+    .modal-note { font-size: 0.75rem; color: #64748b; margin-top: 10px; }
+    video#selfieVideo, canvas#selfieCanvas { display: none; }
+    iframe#uploadFrame { display: none; }
   </style>
 </head>
 <body>
@@ -81,11 +44,37 @@
   <div id="result"></div>
   <div id="status">Loading names...</div>
 
+  <div class="modal-overlay" id="pinModal">
+    <div class="modal-box">
+      <h2 id="pinPersonName">Confirm it's you</h2>
+      <p>Enter your PIN. We'll also snap a quick selfie and check your location.</p>
+      <input type="tel" id="pinInput" maxlength="6" placeholder="••••" inputmode="numeric">
+      <img id="selfiePreview">
+      <div class="modal-buttons">
+        <button id="pinCancel">Cancel</button>
+        <button id="pinConfirm">Confirm</button>
+      </div>
+      <div class="modal-note" id="modalNote"></div>
+    </div>
+  </div>
+
+  <video id="selfieVideo" autoplay playsinline></video>
+  <canvas id="selfieCanvas"></canvas>
+  <iframe name="uploadFrame" id="uploadFrame"></iframe>
+  <form id="uploadForm" method="POST" target="uploadFrame" style="display:none;">
+    <input type="hidden" name="id" id="formId">
+    <input type="hidden" name="pin" id="formPin">
+    <input type="hidden" name="lat" id="formLat">
+    <input type="hidden" name="lng" id="formLng">
+    <input type="hidden" name="photoData" id="formPhoto">
+  </form>
+
   <script>
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxPjw95HouwwcwBeJc4J_ZZA0Pqcm9DqcYasKwIbvP2TNS7n-t4dDZQHze-st_Z5nUl/exec";
 
     let allPeople = [];
     let isProcessing = false;
+    let selectedPerson = null;
 
     function jsonpRequest(url, onSuccess, onError) {
       const callbackName = "jsonpCallback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
@@ -110,39 +99,10 @@
       people.forEach(function (p) {
         const btn = document.createElement("button");
         btn.className = "person-btn";
-        btn.innerHTML = p.name + (p.purpose ? '<span class="purpose">' + p.purpose + "</span>" : "");
-        btn.onclick = function () { handleTap(p); };
+        btn.textContent = p.name;
+        btn.onclick = function () { openPinModal(p); };
         listDiv.appendChild(btn);
       });
-    }
-
-    function handleTap(person) {
-      if (isProcessing) return;
-      isProcessing = true;
-
-      const resultDiv = document.getElementById("result");
-      resultDiv.className = "show";
-      resultDiv.textContent = "Recording for " + person.name + "...";
-
-      jsonpRequest(
-        WEB_APP_URL + "?id=" + encodeURIComponent(person.id),
-        function (data) {
-          resultDiv.className = "show " + (data.status === "in" ? "in" : (data.status === "out" ? "out" : "error"));
-          resultDiv.textContent = data.message;
-          setTimeout(function () {
-            resultDiv.className = "";
-            isProcessing = false;
-          }, 3500);
-        },
-        function (err) {
-          resultDiv.className = "show error";
-          resultDiv.textContent = "Error: " + err.message;
-          setTimeout(function () {
-            resultDiv.className = "";
-            isProcessing = false;
-          }, 3500);
-        }
-      );
     }
 
     document.getElementById("search").addEventListener("input", function (e) {
@@ -152,6 +112,115 @@
       });
       renderList(filtered);
     });
+
+    function openPinModal(person) {
+      selectedPerson = person;
+      document.getElementById("pinPersonName").textContent = "Hi " + person.name + ", confirm it's you";
+      document.getElementById("pinInput").value = "";
+      document.getElementById("selfiePreview").style.display = "none";
+      document.getElementById("modalNote").textContent = "";
+      document.getElementById("pinConfirm").disabled = false;
+      document.getElementById("pinModal").classList.add("show");
+      setTimeout(function () { document.getElementById("pinInput").focus(); }, 100);
+    }
+
+    function closePinModal() {
+      document.getElementById("pinModal").classList.remove("show");
+      selectedPerson = null;
+    }
+
+    document.getElementById("pinCancel").onclick = closePinModal;
+    document.getElementById("pinInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") document.getElementById("pinConfirm").click();
+    });
+
+    function captureSelfie() {
+      return new Promise(function (resolve) {
+        const video = document.getElementById("selfieVideo");
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+          .then(function (stream) {
+            video.srcObject = stream;
+            setTimeout(function () {
+              const canvas = document.getElementById("selfieCanvas");
+              canvas.width = video.videoWidth || 320;
+              canvas.height = video.videoHeight || 240;
+              canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+              const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+              stream.getTracks().forEach(function (t) { t.stop(); });
+              document.getElementById("selfiePreview").src = dataUrl;
+              document.getElementById("selfiePreview").style.display = "block";
+              resolve(dataUrl);
+            }, 700);
+          })
+          .catch(function () { resolve(null); });
+      });
+    }
+
+    function getLocation() {
+      return new Promise(function (resolve) {
+        if (!navigator.geolocation) { resolve(null); return; }
+        navigator.geolocation.getCurrentPosition(
+          function (pos) { resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+          function () { resolve(null); },
+          { timeout: 8000, maximumAge: 30000 }
+        );
+      });
+    }
+
+    document.getElementById("pinConfirm").onclick = function () {
+      if (!selectedPerson || isProcessing) return;
+      const pin = document.getElementById("pinInput").value.trim();
+      const person = selectedPerson;
+
+      document.getElementById("pinConfirm").disabled = true;
+      document.getElementById("modalNote").textContent = "Getting location & camera...";
+
+      Promise.all([captureSelfie(), getLocation()]).then(function (results) {
+        const photoDataUrl = results[0];
+        const loc = results[1];
+        closePinModal();
+        submitScan(person, pin, loc, photoDataUrl);
+      });
+    };
+
+    let messageHandlerActive = false;
+
+    function submitScan(person, pin, loc, photoDataUrl) {
+      isProcessing = true;
+      const resultDiv = document.getElementById("result");
+      resultDiv.className = "show";
+      resultDiv.textContent = "Recording for " + person.name + "...";
+
+      document.getElementById("formId").value = person.id;
+      document.getElementById("formPin").value = pin;
+      document.getElementById("formLat").value = loc ? loc.lat : "";
+      document.getElementById("formLng").value = loc ? loc.lng : "";
+      document.getElementById("formPhoto").value = photoDataUrl || "";
+      document.getElementById("uploadForm").action = WEB_APP_URL;
+
+      if (!messageHandlerActive) {
+        messageHandlerActive = true;
+        window.addEventListener("message", function (event) {
+          let data;
+          try { data = JSON.parse(event.data); } catch (e) { return; }
+          if (!data || !data.status) return;
+          const rd = document.getElementById("result");
+          rd.className = "show " + (data.status === "in" ? "in" : (data.status === "out" ? "out" : "error"));
+          rd.textContent = data.message;
+          setTimeout(function () { rd.className = ""; isProcessing = false; }, 4000);
+        });
+      }
+
+      document.getElementById("uploadForm").submit();
+
+      setTimeout(function () {
+        if (isProcessing) {
+          resultDiv.className = "show error";
+          resultDiv.textContent = "No response from server — check your connection and try again.";
+          setTimeout(function () { resultDiv.className = ""; isProcessing = false; }, 4000);
+        }
+      }, 15000);
+    }
 
     if (WEB_APP_URL.indexOf("PASTE_YOUR") === 0) {
       document.getElementById("status").textContent = "⚠️ Set WEB_APP_URL in the code before using this page.";
